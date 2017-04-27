@@ -1,0 +1,5 @@
+Volo.IdentityServer.Web/obj/
+Volo.IdentityServer.Web/bin/
+Volo.IdentityServer.Data/obj/
+.vs/
+Volo.IdentityServer.Data/bin/Debug/netcoreapp1.1/Volo.IdentityServer.Data.deps.json
