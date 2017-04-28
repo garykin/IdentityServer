@@ -18,6 +18,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using IdentityServer4.Events;
 using IdentityServer4.Extensions;
+using Volo.IdentityServer.Data.IdentityModels;
+using Volo.IdentityServer.Data.Stores;
+using Microsoft.AspNetCore.Identity;
 
 namespace IdentityServer4.Quickstart.UI
 {
@@ -29,7 +32,7 @@ namespace IdentityServer4.Quickstart.UI
     [SecurityHeaders]
     public class AccountController : Controller
     {
-        private readonly TestUserStore _users;
+        private readonly ApplicationUserManager _userManager;
         private readonly IIdentityServerInteractionService _interaction;
         private readonly IEventService _events;
         private readonly AccountService _account;
@@ -39,10 +42,9 @@ namespace IdentityServer4.Quickstart.UI
             IClientStore clientStore,
             IHttpContextAccessor httpContextAccessor,
             IEventService events,
-            TestUserStore users = null)
+            ApplicationUserManager userManager)
         {
-            // if the TestUserStore is not in DI, then we'll just use the global users collection
-            _users = users ?? new TestUserStore(TestUsers.Users);
+            _userManager = userManager;
             _interaction = interaction;
             _events = events;
             _account = new AccountService(interaction, httpContextAccessor, clientStore);
@@ -74,12 +76,12 @@ namespace IdentityServer4.Quickstart.UI
         {
             if (ModelState.IsValid)
             {
-                // validate username/password against in-memory store
-                if (_users.ValidateCredentials(model.Username, model.Password))
+                var identityUser = await _userManager.FindByNameAsync(model.Username);
+
+                if (identityUser != null && await _userManager.CheckPasswordAsync(identityUser, model.Password))
                 {
                     AuthenticationProperties props = null;
-                    // only set explicit expiration here if persistent. 
-                    // otherwise we reply upon expiration configured in cookie middleware.
+
                     if (AccountOptions.AllowRememberLogin && model.RememberLogin)
                     {
                         props = new AuthenticationProperties
@@ -89,12 +91,10 @@ namespace IdentityServer4.Quickstart.UI
                         };
                     };
 
-                    // issue authentication cookie with subject ID and username
-                    var user = _users.FindByUsername(model.Username);
-                    await _events.RaiseAsync(new UserLoginSuccessEvent(user.Username, user.SubjectId, user.Username));
-                    await HttpContext.Authentication.SignInAsync(user.SubjectId, user.Username, props);
+                    await _events.RaiseAsync(new UserLoginSuccessEvent(
+                            identityUser.UserName, identityUser.Id, identityUser.UserName));
+                    await HttpContext.Authentication.SignInAsync(identityUser.Id, identityUser.UserName, props);
 
-                    // make sure the returnUrl is still valid, and if yes - redirect back to authorize endpoint or a local page
                     if (_interaction.IsValidReturnUrl(model.ReturnUrl) || Url.IsLocalUrl(model.ReturnUrl))
                     {
                         return Redirect(model.ReturnUrl);
@@ -108,9 +108,47 @@ namespace IdentityServer4.Quickstart.UI
                 ModelState.AddModelError("", AccountOptions.InvalidCredentialsErrorMessage);
             }
 
-            // something went wrong, show form with error
             var vm = await _account.BuildLoginViewModelAsync(model);
             return View(vm);
+            //if (ModelState.IsValid)
+            //{
+            //    // validate username/password against in-memory store
+            //    if (_users.ValidateCredentials(model.Username, model.Password))
+            //    {
+            //        AuthenticationProperties props = null;
+            //        // only set explicit expiration here if persistent. 
+            //        // otherwise we reply upon expiration configured in cookie middleware.
+            //        if (AccountOptions.AllowRememberLogin && model.RememberLogin)
+            //        {
+            //            props = new AuthenticationProperties
+            //            {
+            //                IsPersistent = true,
+            //                ExpiresUtc = DateTimeOffset.UtcNow.Add(AccountOptions.RememberMeLoginDuration)
+            //            };
+            //        };
+
+            //        // issue authentication cookie with subject ID and username
+            //        var user = _users.FindByUsername(model.Username);
+            //        await _events.RaiseAsync(new UserLoginSuccessEvent(user.Username, user.SubjectId, user.Username));
+            //        await HttpContext.Authentication.SignInAsync(user.SubjectId, user.Username, props);
+
+            //        // make sure the returnUrl is still valid, and if yes - redirect back to authorize endpoint or a local page
+            //        if (_interaction.IsValidReturnUrl(model.ReturnUrl) || Url.IsLocalUrl(model.ReturnUrl))
+            //        {
+            //            return Redirect(model.ReturnUrl);
+            //        }
+
+            //        return Redirect("~/");
+            //    }
+
+            //    await _events.RaiseAsync(new UserLoginFailureEvent(model.Username, "invalid credentials"));
+
+            //    ModelState.AddModelError("", AccountOptions.InvalidCredentialsErrorMessage);
+            //}
+
+            //// something went wrong, show form with error
+            //var vm = await _account.BuildLoginViewModelAsync(model);
+            //return View(vm);
         }
 
         /// <summary>
@@ -170,7 +208,6 @@ namespace IdentityServer4.Quickstart.UI
         [HttpGet]
         public async Task<IActionResult> ExternalLoginCallback(string returnUrl)
         {
-            // read external identity from the temporary cookie
             var info = await HttpContext.Authentication.GetAuthenticateInfoAsync(IdentityServer4.IdentityServerConstants.ExternalCookieAuthenticationScheme);
             var tempUser = info?.Principal;
             if (tempUser == null)
@@ -178,11 +215,8 @@ namespace IdentityServer4.Quickstart.UI
                 throw new Exception("External authentication error");
             }
 
-            // retrieve claims of the external user
             var claims = tempUser.Claims.ToList();
 
-            // try to determine the unique id of the external user - the most common claim type for that are the sub claim and the NameIdentifier
-            // depending on the external provider, some other claim type might be used
             var userIdClaim = claims.FirstOrDefault(x => x.Type == JwtClaimTypes.Subject);
             if (userIdClaim == null)
             {
@@ -193,31 +227,26 @@ namespace IdentityServer4.Quickstart.UI
                 throw new Exception("Unknown userid");
             }
 
-            // remove the user id claim from the claims collection and move to the userId property
-            // also set the name of the external authentication provider
             claims.Remove(userIdClaim);
             var provider = info.Properties.Items["scheme"];
             var userId = userIdClaim.Value;
 
-            // check if the external user is already provisioned
-            var user = _users.FindByExternalProvider(provider, userId);
+            var user = await _userManager.FindByLoginAsync(provider, userId);
             if (user == null)
             {
-                // this sample simply auto-provisions new external user
-                // another common approach is to start a registrations workflow first
-                user = _users.AutoProvisionUser(provider, userId, claims);
+                user = new User { UserName = Guid.NewGuid().ToString() };
+                await _userManager.CreateAsync(user);
+                await _userManager.AddLoginAsync(user, new UserLoginInfo(provider, userId, provider));
             }
 
             var additionalClaims = new List<Claim>();
 
-            // if the external system sent a session id claim, copy it over
             var sid = claims.FirstOrDefault(x => x.Type == JwtClaimTypes.SessionId);
             if (sid != null)
             {
                 additionalClaims.Add(new Claim(JwtClaimTypes.SessionId, sid.Value));
             }
 
-            // if the external provider issued an id_token, we'll keep it for signout
             AuthenticationProperties props = null;
             var id_token = info.Properties.GetTokenValue("id_token");
             if (id_token != null)
@@ -226,20 +255,87 @@ namespace IdentityServer4.Quickstart.UI
                 props.StoreTokens(new[] { new AuthenticationToken { Name = "id_token", Value = id_token } });
             }
 
-            // issue authentication cookie for user
-            await _events.RaiseAsync(new UserLoginSuccessEvent(provider, userId, user.SubjectId, user.Username));
-            await HttpContext.Authentication.SignInAsync(user.SubjectId, user.Username, provider, props, additionalClaims.ToArray());
+            await _events.RaiseAsync(new UserLoginSuccessEvent(provider, userId, user.Id, user.UserName));
+            await HttpContext.Authentication.SignInAsync(user.Id, user.UserName, provider, additionalClaims.ToArray());
 
-            // delete temporary cookie used during external authentication
             await HttpContext.Authentication.SignOutAsync(IdentityServer4.IdentityServerConstants.ExternalCookieAuthenticationScheme);
 
-            // validate return URL and redirect back to authorization endpoint or a local page
             if (_interaction.IsValidReturnUrl(returnUrl) || Url.IsLocalUrl(returnUrl))
             {
                 return Redirect(returnUrl);
             }
 
             return Redirect("~/");
+            //// read external identity from the temporary cookie
+            //var info = await HttpContext.Authentication.GetAuthenticateInfoAsync(IdentityServer4.IdentityServerConstants.ExternalCookieAuthenticationScheme);
+            //var tempUser = info?.Principal;
+            //if (tempUser == null)
+            //{
+            //    throw new Exception("External authentication error");
+            //}
+
+            //// retrieve claims of the external user
+            //var claims = tempUser.Claims.ToList();
+
+            //// try to determine the unique id of the external user - the most common claim type for that are the sub claim and the NameIdentifier
+            //// depending on the external provider, some other claim type might be used
+            //var userIdClaim = claims.FirstOrDefault(x => x.Type == JwtClaimTypes.Subject);
+            //if (userIdClaim == null)
+            //{
+            //    userIdClaim = claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier);
+            //}
+            //if (userIdClaim == null)
+            //{
+            //    throw new Exception("Unknown userid");
+            //}
+
+            //// remove the user id claim from the claims collection and move to the userId property
+            //// also set the name of the external authentication provider
+            //claims.Remove(userIdClaim);
+            //var provider = info.Properties.Items["scheme"];
+            //var userId = userIdClaim.Value;
+
+            //// check if the external user is already provisioned
+            //var user = _users.FindByExternalProvider(provider, userId);
+            //if (user == null)
+            //{
+            //    // this sample simply auto-provisions new external user
+            //    // another common approach is to start a registrations workflow first
+            //    user = _users.AutoProvisionUser(provider, userId, claims);
+            //}
+
+            //var additionalClaims = new List<Claim>();
+
+            //// if the external system sent a session id claim, copy it over
+            //var sid = claims.FirstOrDefault(x => x.Type == JwtClaimTypes.SessionId);
+            //if (sid != null)
+            //{
+            //    additionalClaims.Add(new Claim(JwtClaimTypes.SessionId, sid.Value));
+            //}
+
+            //// if the external provider issued an id_token, we'll keep it for signout
+            //AuthenticationProperties props = null;
+            //var id_token = info.Properties.GetTokenValue("id_token");
+            //if (id_token != null)
+            //{
+            //    props = new AuthenticationProperties();
+            //    props.StoreTokens(new[] { new AuthenticationToken { Name = "id_token", Value = id_token } });
+            //}
+
+            //// issue authentication cookie for user
+            //await _events.RaiseAsync(new UserLoginSuccessEvent(provider, userId, user.SubjectId, user.Username));
+            //await HttpContext.Authentication.SignInAsync(user.SubjectId, user.Username, provider, props, additionalClaims.ToArray());
+
+            //// delete temporary cookie used during external authentication
+            //await HttpContext.Authentication.SignOutAsync(IdentityServer4.IdentityServerConstants.ExternalCookieAuthenticationScheme);
+
+            //// validate return URL and redirect back to authorization endpoint or a local page
+            //if (_interaction.IsValidReturnUrl(returnUrl) || Url.IsLocalUrl(returnUrl))
+            //{
+            //    return Redirect(returnUrl);
+            //}
+
+            //return Redirect("~/");
         }
 
         /// <summary>

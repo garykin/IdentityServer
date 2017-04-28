@@ -1,9 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using IdentityServer4.EntityFramework.Mappers;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
+using Volo.IdentityServer.Data;
+using Volo.IdentityServer.Data.Stores;
 
 namespace Volo.IdentityServer.Web
 {
@@ -19,7 +20,43 @@ namespace Volo.IdentityServer.Web
                 .UseApplicationInsights()
                 .Build();
 
+            SeedIdentityServerConfigurationDb();
+
             host.Run();
+        }
+
+
+        private static void SeedIdentityServerConfigurationDb()
+        {
+            var factory = new ConfigurationDbContextFactory();
+            var context = factory.Create(new DbContextFactoryOptions
+            {
+                EnvironmentName = "Dev"
+            });
+
+            if (!context.Clients.Any())
+            {
+                foreach (var client in ApplicationClientStore.Clients)
+                    context.Clients.Add(client.ToEntity());
+                context.SaveChanges();
+            }
+
+
+
+
+            if (!context.IdentityResources.Any())
+            {
+                foreach (var resource in ApplicationResourceStore.GetIdentityResources())
+                    context.IdentityResources.Add(resource.ToEntity());
+                context.SaveChanges();
+            }
+
+            if (!context.ApiResources.Any())
+            {
+                foreach (var resource in ApplicationResourceStore.GetApiResources())
+                    context.ApiResources.Add(resource.ToEntity());
+                context.SaveChanges();
+            }
         }
     }
 }

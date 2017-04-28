@@ -1,4 +1,5 @@
-﻿using IdentityServer4.Models;
+﻿using IdentityServer4;
+using IdentityServer4.Models;
 using IdentityServer4.Stores;
 using System;
 using System.Collections.Generic;
@@ -15,12 +16,22 @@ namespace Volo.IdentityServer.Data.Stores
             new Client
             {
                 //AccessTokenType = AccessTokenType.Reference,
-                ClientId = "PandaClient",
-                ClientName = "Panda Web Api",
-                AccessTokenLifetime = 60*60*24,
+                ClientId = "PandaOpenIdConnectClient",
+                ClientName = "Example Implicit Client Application",
+               // AccessTokenLifetime = 60*60*24,
                 AllowedGrantTypes = GrantTypes.ResourceOwnerPassword,
                 RequireClientSecret = false,
-                AllowedScopes = {"openid", "PandaApi", "PandaIdentity" }
+                AllowedScopes = //{"openid", "PandaApi", "PandaIdentity" }
+                new List<string>
+                {
+                    IdentityServerConstants.StandardScopes.OpenId,
+                    IdentityServerConstants.StandardScopes.Profile,
+                    IdentityServerConstants.StandardScopes.Email,
+                    "role",
+                    "customAPI.write"
+                },
+                 RedirectUris = new List<string> { "https://localhost:44391/signin-oidc" },
+                 PostLogoutRedirectUris = new List<string> { "https://localhost:44391" }
             }
         };
 

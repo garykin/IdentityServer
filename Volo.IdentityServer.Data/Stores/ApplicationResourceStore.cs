@@ -21,32 +21,37 @@ namespace Volo.IdentityServer.Data.Stores
 
         public static IEnumerable<ApiResource> GetApiResources()
         {
-            return new[]
+            return new List<ApiResource>
             {
-                new ApiResource("PandaApi", "Panda Web API", new[] { JwtClaimTypes.Name, JwtClaimTypes.Role, "module" })
+                new ApiResource
+                {
+                    Name = "customAPI",
+                    DisplayName = "Custom API",
+                    Description = "Custom API Access",
+                    UserClaims = new List<string> {"role"},
+                    ApiSecrets = new List<Secret> {new Secret("scopeSecret".Sha256())},
+                    Scopes = new List<Scope>
+                    {
+                        new Scope("customAPI.read"),
+                        new Scope("customAPI.write")
+                    }
+                }
             };
         }
+
+
 
         public static IEnumerable<IdentityResource> GetIdentityResources()
         {
             return new List<IdentityResource>
             {
-                new IdentityResources.OpenId(),
+              new IdentityResources.OpenId(),
                 new IdentityResources.Profile(),
+                new IdentityResources.Email(),
                 new IdentityResource
                 {
-                    Name = "PandaIdentity",
-                    UserClaims =
-                        new[]
-                        {
-                            JwtClaimTypes.Name,
-                            JwtClaimTypes.Role,
-                            JwtClaimTypes.GivenName,
-                            JwtClaimTypes.FamilyName,
-                            JwtClaimTypes.Email,
-                            "module",
-                            "module.permissions"
-                        }
+                    Name = "role",
+                    UserClaims = new List<string> {"role"}
                 }
             };
         }
