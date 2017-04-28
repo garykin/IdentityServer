@@ -70,7 +70,7 @@ namespace Volo.IdentityServer.Web
             // app.UseStaticFiles();
             // app.UseMvcWithDefaultRoute();
 
-            app.Run(async context => { await context.Response.WriteAsync("Hello World!"); });
+            app.Run(async context => { await context.Response.WriteAsync("Panda`s Identity Server!"); });
         }
 
         //private static void InitializeDbTestData(IApplicationBuilder app)

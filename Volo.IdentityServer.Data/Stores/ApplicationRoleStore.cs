@@ -16,7 +16,7 @@ namespace Volo.IdentityServer.Data.Stores
 
         protected override IdentityRoleClaim<string> CreateRoleClaim(Role role, Claim claim)
         {
-            throw new NotImplementedException();
+            return new IdentityRoleClaim<string> { RoleId = role.Id, ClaimType = claim.Type, ClaimValue = claim.Value };
         }
     }
 }

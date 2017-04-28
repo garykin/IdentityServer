@@ -1,6 +1,9 @@
 ﻿using IdentityModel;
+using IdentityServer4.EntityFramework.DbContexts;
+using IdentityServer4.EntityFramework.Interfaces;
 using IdentityServer4.Models;
 using IdentityServer4.Stores;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -8,6 +11,14 @@ namespace Volo.IdentityServer.Data.Stores
 {
     public class ApplicationResourceStore : IResourceStore
     {
+        public ApplicationResourceStore(IConfigurationDbContext context, IDbContextFactory<ConfigurationDbContext> factory)
+        {
+            var a = factory.Create(new DbContextFactoryOptions
+            {
+                EnvironmentName = "Dev"
+            });
+        }
+
         public static IEnumerable<ApiResource> GetApiResources()
         {
             return new[]
@@ -26,7 +37,7 @@ namespace Volo.IdentityServer.Data.Stores
                 {
                     Name = "PandaIdentity",
                     UserClaims =
-                        new[]   
+                        new[]
                         {
                             JwtClaimTypes.Name,
                             JwtClaimTypes.Role,

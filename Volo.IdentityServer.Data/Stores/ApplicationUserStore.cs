@@ -16,22 +16,40 @@ namespace Volo.IdentityServer.Data.Stores
 
         protected override UserClaim CreateUserClaim(User user, Claim claim)
         {
-            throw new NotImplementedException();
+            var userClaim = new UserClaim { UserId = user.Id };
+            userClaim.InitializeFromClaim(claim);
+            return userClaim;
         }
 
         protected override UserLogin CreateUserLogin(User user, UserLoginInfo login)
         {
-            throw new NotImplementedException();
+            return new UserLogin
+            {
+                UserId = user.Id,
+                ProviderKey = login.ProviderKey,
+                LoginProvider = login.LoginProvider,
+                ProviderDisplayName = login.ProviderDisplayName
+            };
         }
 
         protected override UserRole CreateUserRole(User user, Role role)
         {
-            throw new NotImplementedException();
+            return new UserRole()
+            {
+                UserId = user.Id,
+                RoleId = role.Id
+            };
         }
 
         protected override UserToken CreateUserToken(User user, string loginProvider, string name, string value)
         {
-            throw new NotImplementedException();
+            return new UserToken
+            {
+                UserId = user.Id,
+                LoginProvider = loginProvider,
+                Name = name,
+                Value = value
+            };
         }
     }
 }

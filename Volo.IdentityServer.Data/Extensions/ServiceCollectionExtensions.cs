@@ -19,7 +19,7 @@ namespace Volo.IdentityServer.Data.Extensions
 
         public static void RegisterIdentity(this IServiceCollection services)
         {
-            var migrationsAssembly = typeof(ApplicationIdentityDbContext).GetTypeInfo().Assembly.GetName().Name;
+          //  var migrationsAssembly = typeof(ApplicationIdentityDbContext).GetTypeInfo().Assembly.GetName().Name;
 
             // ASP.NET Identity Registrations            
             services
