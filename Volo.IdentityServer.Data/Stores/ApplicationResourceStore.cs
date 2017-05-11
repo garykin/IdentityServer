@@ -74,7 +74,8 @@ namespace Volo.IdentityServer.Data.Stores
 
         public Task<Resources> GetAllResources()
         {
-            throw new System.NotImplementedException();
+            return Task.FromResult(new Resources());
+            //throw new System.NotImplementedException();
         }
         #endregion
     }

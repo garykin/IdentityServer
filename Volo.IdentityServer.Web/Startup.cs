@@ -22,7 +22,7 @@ namespace Volo.IdentityServer.Web
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
             loggerFactory.AddConsole();
-            
+
 
             if (env.IsDevelopment())
             {
@@ -35,10 +35,11 @@ namespace Volo.IdentityServer.Web
             app.UseIdentity();
             app.UseIdentityServer();
 
+
             app.UseStaticFiles();
             app.UseMvcWithDefaultRoute();
 
-            app.Run(async context => { await context.Response.WriteAsync("Panda`s Identity Server!"); });
+          //  app.Run(async context => { await context.Response.WriteAsync("Panda`s Identity Server!"); });
         }
 
         //private static void InitializeDbTestData(IApplicationBuilder app)

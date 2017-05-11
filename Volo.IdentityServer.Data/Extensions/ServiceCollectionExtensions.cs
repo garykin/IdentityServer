@@ -19,7 +19,7 @@ namespace Volo.IdentityServer.Data.Extensions
 
         public static void RegisterIdentity(this IServiceCollection services)
         {
-          //  var migrationsAssembly = typeof(ApplicationIdentityDbContext).GetTypeInfo().Assembly.GetName().Name;
+            //  var migrationsAssembly = typeof(ApplicationIdentityDbContext).GetTypeInfo().Assembly.GetName().Name;
 
             // ASP.NET Identity Registrations            
             services
@@ -30,6 +30,7 @@ namespace Volo.IdentityServer.Data.Extensions
                 .AddRoleStore<ApplicationRoleStore>()
                 .AddRoleManager<ApplicationRoleManager>()
                 .AddSignInManager<ApplicationSignInManager>()
+
                 // You **cannot** use .AddEntityFrameworkStores() when you customize everything
                 // .AddEntityFrameworkStores<ApplicationIdentityDbContext>()
 
@@ -47,16 +48,18 @@ namespace Volo.IdentityServer.Data.Extensions
 
             services.AddIdentityServer()
                 .AddTemporarySigningCredential()
-                .AddInMemoryApiResources(ApplicationResourceStore.GetApiResources())
-                .AddInMemoryIdentityResources(ApplicationResourceStore.GetIdentityResources())
+             //  .AddInMemoryApiResources(ApplicationResourceStore.GetApiResources())
+             //  .AddInMemoryIdentityResources(ApplicationResourceStore.GetIdentityResources())
 
 
              .AddOperationalStore(
-                 builder => builder.UseSqlServer(Constants.DevConnectionString, options => options.MigrationsAssembly(migrationsAssembly)))
+                 builder => builder.UseSqlServer(Constants.DevConnectionString, options => options.MigrationsAssembly(migrationsAssembly)),
+                 options => options.DefaultSchema = "oper")
              .AddConfigurationStore(
-                 builder => builder.UseSqlServer(Constants.DevConnectionString, options => options.MigrationsAssembly(migrationsAssembly)))
+                 builder => builder.UseSqlServer(Constants.DevConnectionString, options => options.MigrationsAssembly(migrationsAssembly)),
+                 options => options.DefaultSchema = "config")
              .AddAspNetIdentity<User>()
-             //.AddTemporarySigningCredential()
+
              ;
 
 
