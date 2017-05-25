@@ -51,5 +51,7 @@ namespace Volo.IdentityServer.Data.Stores
                 Value = value
             };
         }
+
+
     }
 }
