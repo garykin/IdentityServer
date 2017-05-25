@@ -16,10 +16,11 @@ namespace Volo.IdentityServer.Data.Stores
             new Client
             {
                 //AccessTokenType = AccessTokenType.Reference,
-                ClientId = "PandaOpenIdConnectClient",
+                ClientId = "PandaOpenIdConnectClient2",
                 ClientName = "Example Implicit Client Application",
                // AccessTokenLifetime = 60*60*24,
-                AllowedGrantTypes = GrantTypes.ResourceOwnerPassword,
+                //AllowedGrantTypes = GrantTypes.ResourceOwnerPassword,
+                AllowedGrantTypes = GrantTypes.Implicit,
                 RequireClientSecret = false,
                 AllowedScopes = //{"openid", "PandaApi", "PandaIdentity" }
                 new List<string>
